@@ -27,44 +27,42 @@ def sort(file):
 
 def similarities (person, teacher, is_youth, tutor):
     points = 0
-    interests = []
 
     if is_youth:
         for t_hobby in person.Yteach:
             if t_hobby in teacher.Elearn:
                 points += 1
-                interests.append(t_hobby)
         
         for l_hobby in person.Ylearn:
             if l_hobby in teacher.Eteach:
                 points += 1
-                interests.append(l_hobby)
 
         if tutor:
             if isinstance(teacher.Esubject, list):
                 for subject in person.Ysubject:
                     if subject in teacher.Esubject:
                         points += 1
-                        interests.append(subject)
-        return points
-    
+
+        return points    
     else:
+        interests = ()
         for t_hobby in person.Eteach:
             if t_hobby in teacher.Ylearn:
                 points += 1
-                interests.append(t_hobby)
+                interests = (*interests, t_hobby)
 
         for l_hobby in person.Elearn:
             if l_hobby in teacher.Yteach:
                 points += 1
-                interests.append(l_hobby)
+                interests = (*interests, l_hobby)
 
         if tutor:
             if isinstance(teacher.Ysubject, list):
                 for subject in person.Esubject:
                     if subject in teacher.Ysubject:
                         points += 1
-                        interests.append(subject)
+                        interests = (*interests, subject)
+
         return points, interests
 
 
@@ -82,9 +80,9 @@ def score(age1, age2):
         for teacher in age2.itertuples():
             if person.Age == "Youth":
                 if person.Ytutor == "Yes":
-                    teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, True, True)
+                    teachers_scored[teacher.Name] = similarities(person, teacher, True, True)
                 else:
-                    teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, True, False)
+                    teachers_scored[teacher.Name] = similarities(person, teacher, True, False)
             else:
                 if person.Etutor == "Yes":
                     teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, False, True)
@@ -92,9 +90,12 @@ def score(age1, age2):
                     teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, True, False)
         
         all_scored[person.Name] = teachers_scored
+
+
         all_match_interests[person.Name] = matching_interests
-        print(all_match_interests)
-    return all_scored
+
+    return all_scored, all_match_interests
+
 
 def rank(age):
     for person in age.keys():
@@ -104,6 +105,7 @@ def rank(age):
             person_pref.append(teacher)
         age[person] = person_pref
     return age
+
 
 def pairing(all_youth, all_elderly):
     youth_free = list(all_youth.keys())
@@ -131,7 +133,7 @@ def pairing(all_youth, all_elderly):
     return pairs
 
 
-def groups(y_group, e_group, paired):
+def groups(y_group, e_group, paired, e_interest_match):
     e_group.rename(columns = {"Name":"e_Name", "Email":"e_Email", "Bio":"e_Bio", "Group":"e_Group", "Age":"e_Age"}, inplace=True)
     
     e_group = e_group.drop(["Yteach", "Ylearn", "Ytutor", "Ysubject"], axis=1)
@@ -150,40 +152,114 @@ def groups(y_group, e_group, paired):
 
     groups = pd.concat([y_group, e_group], axis=1).reindex(y_group.index)
 
-    # for elder in paired.vals():
-    #     #if an interest matches, add interest to MatchingInterests
-    #     for skill in groups.loc[elder, "El"]:
-    #         if skill in data_paired.loc[person,"FInterests"]:
-    #             data_paired.loc[person, "MatchingInterests"] += interest
-    #             data_paired.loc[person, "MatchingInterests"] += ", "
-        
-    #     #if both language sections are lists
-    #     if isinstance(data_paired.loc[person, "Language"], list) and \
-    #         isinstance(data_paired.loc[person, "FLanguage"], list): 
+    groups["MatchingInterests"] = ""
 
-    #         #if a language matches, add language to MatchingLanguage  
-    #         for language in data_paired.loc[person, "Language"]:
-    #             if language in data_paired.loc[person,"FLanguage"]:
-    #                 data_paired.loc[person, "MatchingLanguage"] += language
-    #                 data_paired.loc[person, "MatchingLanguage"] += ", "
+    for young, old in paired.items():
+        for interest in e_interest_match[old][young]:
+            groups.loc[old, "MatchingInterests"] += interest + ","
 
-    groups.to_excel("groups.xlsx")
+    return groups
 
+
+def group_similarities(pair, other):
+    points = 0
+
+    pair_interests = pair.MatchingInterests.split(",")
+    other_interests = other.MatchingInterests.split(",")
+
+    for interest in pair_interests:
+        if interest in other_interests:
+            points += 1
+    
+    return points
+
+
+def group_score(group):
+    all_scored = {}
+
+    for pair in group.itertuples():
+        pair_scored = {}
+        group.drop(pair.Elder)
+
+        for other in group.itertuples():
+            pair_scored[other.Elder] = group_similarities(pair, other)
+
+        all_scored[pair.Elder] = pair_scored
+
+    return all_scored
+
+
+def group_pairing():
+    """uses a variant of the gale-shapley algorithm to match the best possible pairs"""
+    #initialize everyone as free
+    unpaired = list(preference.keys())
+    #initialize proposals dictionary with people as keys and an empty list as value
+    proposals = {person: [] for person in preference.keys()}
+    #initialize matches dictionary to store pairs
+    matches = {}
+
+    #while unpaired isn't empty
+    while unpaired:
+        #pop one person as proposer
+        proposer = unpaired.pop(0)
+        proposer_pref = preference[proposer]
+
+        #for each person in proposer's friends
+        for preferred in proposer_pref:
+            #if preferred has not already been proposed to by proposer
+            if preferred not in proposals[proposer]:
+                #record that preferred as been proposed to
+                proposals[proposer].append(preferred)
+
+                #skip to next preferred person if proposer is not in preferred's list
+                if proposer not in preference[preferred]:
+
+                    continue
+
+                #if preferred has not been matched, match proposer with preferred and stop looking for next preferred person
+                elif preferred not in matches:
+                    #remove preferred from unpaired so they don't look for someone to pair with
+                    unpaired.remove(preferred)
+                    matches[preferred] = proposer
+                    matches[proposer] = preferred
+                    break
+
+                else:
+                    #find person preferred is matched with
+                    current_match = matches[preferred]
+                    # if current match is worse than proposer
+                    if preference[preferred].index(proposer) < preference[preferred].index(current_match):
+
+                        #add preferred and proposer as a pair
+                        matches[preferred] = proposer
+                        matches[proposer] = preferred
+                        #kick person preferred was matched with out of matched
+                        if current_match in matches.keys():
+                            del matches[current_match]
+                        #add formerly matched person to unpaired
+                        unpaired.append(current_match)
+                        break
+    #remove duplicates by ordering the keys and values where key is less than value, so any duplicates are easily detected and removed
+    final_matches = {key:val for key, val in matches.items() if key < val}
+    return final_matches
 
 
 def main(filename):
 
     youth, elderly, y_group, e_group = sort(filename)
 
-    youth_scored = score(youth, elderly)
-    elderly_scored = score(elderly, youth)
+    youth_scored, y_interest_match = score(youth, elderly)
+    elderly_scored, e_interest_match = score(elderly, youth)
 
     youth_ranked = rank(youth_scored)
     elderly_ranked = rank(elderly_scored)
 
     paired = pairing(youth_ranked, elderly_ranked)
 
-    groups(y_group, e_group, paired)
+    group = groups(y_group, e_group, paired, e_interest_match)
+
+    print(group_score(group))
+
 
 main("bridges.csv")
 
