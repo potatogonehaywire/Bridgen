@@ -45,23 +45,23 @@ def similarities (person, teacher, is_youth, tutor):
 
         return points    
     else:
-        interests = ()
+        interests = []
         for t_hobby in person.Eteach:
             if t_hobby in teacher.Ylearn:
                 points += 1
-                interests = (*interests, t_hobby)
+                interests.append(t_hobby)
 
         for l_hobby in person.Elearn:
             if l_hobby in teacher.Yteach:
                 points += 1
-                interests = (*interests, l_hobby)
+                interests.append(l_hobby)
 
         if tutor:
             if isinstance(teacher.Ysubject, list):
                 for subject in person.Esubject:
                     if subject in teacher.Ysubject:
                         points += 1
-                        interests = (*interests, subject)
+                        interests.append(subject)
 
         return points, interests
 
@@ -87,7 +87,7 @@ def score(age1, age2):
                 if person.Etutor == "Yes":
                     teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, False, True)
                 else:
-                    teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, True, False)
+                    teachers_scored[teacher.Name], matching_interests[teacher.Name] = similarities(person, teacher, False, False)
         
         all_scored[person.Name] = teachers_scored
 
@@ -179,9 +179,10 @@ def group_score(group):
 
     for pair in group.itertuples():
         pair_scored = {}
-        group.drop(pair.Elder)
+        # Create a copy of group without current pair for comparison
+        other_pairs = group.drop(pair.Index)
 
-        for other in group.itertuples():
+        for other in other_pairs.itertuples():
             pair_scored[other.Elder] = group_similarities(pair, other)
 
         all_scored[pair.Elder] = pair_scored
@@ -189,7 +190,7 @@ def group_score(group):
     return all_scored
 
 
-def group_pairing():
+def group_pairing(preference):
     """uses a variant of the gale-shapley algorithm to match the best possible pairs"""
     #initialize everyone as free
     unpaired = list(preference.keys())
