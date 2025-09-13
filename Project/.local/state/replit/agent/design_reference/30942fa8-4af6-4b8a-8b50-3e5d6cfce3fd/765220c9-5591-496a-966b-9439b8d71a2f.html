@@ -1,0 +1,1123 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridgen - Connecting Generations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                    'pac-yellow': '#FFFF00',
+                    'arcade-blue': '#0080FF',
+                    'ghost-orange': '#FFA500',
+                    'cherry-red': '#FF0040',
+                    'maze-blue': '#1E3A8A',
+                    'arcade-black': '#0A0A0A',
+                },
+                fontFamily: {
+                    arcade: ['"Press Start 2P"', 'monospace'],
+                    sans: ['Inter', 'sans-serif'],
+                }
+            },
+        }
+    };
+    </script>
+    
+    <style>
+        :root {
+            --background: hsl(240 10% 4%);
+            --foreground: hsl(0 0% 98%);
+            --card: hsl(240 10% 6%);
+            --card-foreground: hsl(0 0% 98%);
+            --popover: hsl(240 10% 6%);
+            --popover-foreground: hsl(0 0% 98%);
+            --primary: hsl(60 100% 50%);
+            --primary-foreground: hsl(240 10% 4%);
+            --secondary: hsl(213 100% 50%);
+            --secondary-foreground: hsl(0 0% 98%);
+            --muted: hsl(217 91% 20%);
+            --muted-foreground: hsl(217 32% 70%);
+            --accent: hsl(33 100% 50%);
+            --accent-foreground: hsl(240 10% 4%);
+            --destructive: hsl(348 100% 50%);
+            --destructive-foreground: hsl(0 0% 98%);
+            --border: hsl(217 91% 20%);
+            --input: hsl(217 91% 20%);
+            --ring: hsl(60 100% 50%);
+            --radius: 12px;
+        }
+        
+        .high-contrast {
+            --background: hsl(0 0% 0%);
+            --foreground: hsl(0 0% 100%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(0 0% 0%);
+            --primary: hsl(60 100% 50%);
+            --secondary: hsl(213 100% 50%);
+            --border: hsl(0 0% 100%);
+        }
+        
+        .pacman-move {
+            animation: pacmanMove 10s linear infinite;
+        }
+        
+        @keyframes pacmanMove {
+            0% { transform: translateX(-100px); }
+            100% { transform: translateX(calc(100vw + 100px)); }
+        }
+        
+        .dot-trail {
+            animation: dotEat 0.5s ease-in-out forwards;
+        }
+        
+        @keyframes dotEat {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0); }
+        }
+        
+        .glow {
+            box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary), 0 0 60px var(--primary);
+        }
+        
+        .arcade-button {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .arcade-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 255, 0, 0.3);
+        }
+        
+        .arcade-button:active {
+            transform: translateY(0px);
+        }
+        
+        .maze-pattern {
+            background-image: 
+                linear-gradient(90deg, transparent 24px, var(--border) 24px, var(--border) 26px, transparent 26px),
+                linear-gradient(transparent 24px, var(--border) 24px, var(--border) 26px, transparent 26px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-foreground font-sans min-h-screen">
+    <!-- @COMPONENT: AccessibilityToggle -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="accessibilityToggle" class="bg-primary text-primary-foreground px-4 py-2 rounded-full font-arcade text-xs hover:glow transition-all">
+            <i class="fas fa-eye mr-2"></i>Clear View
+        </button>
+    </div>
+    <!-- @END_COMPONENT: AccessibilityToggle -->
+
+    <!-- @COMPONENT: Navigation -->
+    <nav class="bg-card border-b border-border sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="text-primary font-arcade text-xl">BRIDGEN</div>
+                    <div class="hidden md:flex space-x-1">
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                    </div>
+                </div>
+                
+                <div class="hidden md:flex space-x-8">
+                    <a href="#home" class="text-foreground hover:text-primary transition-colors text-lg">Home</a>
+                    <a href="#whats-new" class="text-foreground hover:text-primary transition-colors text-lg">What's New</a>
+                    <a href="#features" class="text-foreground hover:text-primary transition-colors text-lg">Features</a>
+                    <a href="#chat" class="text-foreground hover:text-primary transition-colors text-lg">Chat</a>
+                    <a href="#resources" class="text-foreground hover:text-primary transition-colors text-lg">Resources</a>
+                    <a href="#profile" class="text-foreground hover:text-primary transition-colors text-lg">Profile</a>
+                </div>
+                
+                <button class="md:hidden text-foreground">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <!-- @END_COMPONENT: Navigation -->
+
+    <!-- @COMPONENT: HeroSection -->
+    <section id="home" class="relative bg-arcade-black min-h-screen flex items-center justify-center overflow-hidden">
+        <!-- Animated Pac-Man -->
+        <div class="absolute top-1/2 left-0 transform -translate-y-1/2 pacman-move z-10">
+            <div class="text-6xl">🟡</div>
+        </div>
+        
+        <!-- Dot Trail -->
+        <div class="absolute top-1/2 left-0 transform -translate-y-1/2 flex space-x-8 z-5">
+            <div class="w-3 h-3 bg-pac-yellow rounded-full dot-trail" style="animation-delay: 1s;"></div>
+            <div class="w-3 h-3 bg-pac-yellow rounded-full dot-trail" style="animation-delay: 2s;"></div>
+            <div class="w-3 h-3 bg-pac-yellow rounded-full dot-trail" style="animation-delay: 3s;"></div>
+            <div class="w-3 h-3 bg-pac-yellow rounded-full dot-trail" style="animation-delay: 4s;"></div>
+        </div>
+        
+        <div class="relative z-20 text-center max-w-4xl mx-auto px-4">
+            <h1 class="font-arcade text-primary text-2xl md:text-4xl lg:text-6xl mb-8 leading-tight">
+                CONNECTING GENERATIONS
+            </h1>
+            <h2 class="font-arcade text-secondary text-lg md:text-2xl lg:text-3xl mb-8">
+                One Life Lesson at a Time
+            </h2>
+            
+            <p class="text-xl md:text-2xl text-muted-foreground mb-12 leading-relaxed max-w-3xl mx-auto">
+                Bridgen is a digital community where seniors and teens (14+) share wisdom, exchange skills, and grow together through mentorship, storytelling, and collaborative learning.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row gap-6 justify-center">
+                <button class="arcade-button bg-primary text-primary-foreground px-12 py-6 rounded-full font-arcade text-lg hover:glow">
+                    <i class="fas fa-play mr-3"></i>GET STARTED
+                </button>
+                <button class="arcade-button bg-secondary text-secondary-foreground px-12 py-6 rounded-full font-arcade text-lg hover:glow">
+                    <i class="fas fa-users mr-3"></i>FOLLOW US
+                </button>
+            </div>
+            
+            <!-- Spotlight Section -->
+            <div class="grid md:grid-cols-3 gap-8 mt-16">
+                <div class="bg-card border-2 border-primary rounded-lg p-6 text-center hover:glow transition-all">
+                    <div class="text-4xl mb-4">👥</div>
+                    <h3 class="font-arcade text-primary text-sm mb-2">MENTORSHIP CIRCLES</h3>
+                    <p class="text-muted-foreground text-lg">Guided small-group learning experiences</p>
+                </div>
+                <div class="bg-card border-2 border-secondary rounded-lg p-6 text-center hover:glow transition-all">
+                    <div class="text-4xl mb-4">🔄</div>
+                    <h3 class="font-arcade text-secondary text-sm mb-2">SKILL SWAPS</h3>
+                    <p class="text-muted-foreground text-lg">Teach what you know, learn what you don't</p>
+                </div>
+                <div class="bg-card border-2 border-accent rounded-lg p-6 text-center hover:glow transition-all">
+                    <div class="text-4xl mb-4">📚</div>
+                    <h3 class="font-arcade text-accent text-sm mb-2">STORYTELLING</h3>
+                    <p class="text-muted-foreground text-lg">A library of wisdom and experiences</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: HeroSection -->
+
+    <!-- @COMPONENT: WhatsNewSection -->
+    <section id="whats-new" class="py-20 bg-muted">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">WHAT'S NEW</h2>
+                <p class="text-xl text-muted-foreground">Stay updated with the latest from our community</p>
+            </div>
+            
+            <!-- Game Level Map Style -->
+            <div class="relative maze-pattern rounded-lg p-8">
+                <div class="grid gap-6">
+                    <!-- Date Filters -->
+                    <div class="flex flex-wrap gap-4 justify-center mb-8">
+                        <button class="arcade-button bg-primary text-primary-foreground px-6 py-3 rounded-full font-arcade text-sm">TODAY</button>
+                        <button class="arcade-button bg-card text-foreground px-6 py-3 rounded-full font-arcade text-sm border border-border">THIS WEEK</button>
+                        <button class="arcade-button bg-card text-foreground px-6 py-3 rounded-full font-arcade text-sm border border-border">THIS MONTH</button>
+                    </div>
+                    
+                    <!-- News Items -->
+                    <div class="space-y-6">
+                        <div class="bg-card rounded-lg p-6 border-l-4 border-primary">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h3 class="font-arcade text-primary text-sm mb-2">🎉 SUCCESS STORY</h3>
+                                    <p class="text-lg text-foreground mb-2">Congratulations to Mary & Jordan for completing their art project!</p>
+                                    <p class="text-muted-foreground">2 hours ago</p>
+                                </div>
+                                <div class="text-2xl">🏆</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg p-6 border-l-4 border-secondary">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h3 class="font-arcade text-secondary text-sm mb-2">🚀 NEW WORKSHOP</h3>
+                                    <p class="text-lg text-foreground mb-2">Digital Photography Basics - Join this Thursday at 3 PM</p>
+                                    <p class="text-muted-foreground">1 day ago</p>
+                                </div>
+                                <div class="text-2xl">📸</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg p-6 border-l-4 border-accent">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h3 class="font-arcade text-accent text-sm mb-2">✨ NEW FEATURE</h3>
+                                    <p class="text-lg text-foreground mb-2">Introducing Voice Messages in Chat Rooms</p>
+                                    <p class="text-muted-foreground">3 days ago</p>
+                                </div>
+                                <div class="text-2xl">🎙️</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: WhatsNewSection -->
+
+    <!-- @COMPONENT: FeaturesSection -->
+    <section id="features" class="py-20 bg-background">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">EXPLORE BRIDGEN'S KEY FEATURES</h2>
+                <p class="text-xl text-muted-foreground">Everything you need to connect and learn</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature Cards -->
+                <div class="arcade-button bg-card rounded-lg p-8 text-center border-2 border-primary hover:border-primary hover:glow cursor-pointer">
+                    <div class="text-5xl mb-4">👥</div>
+                    <h3 class="font-arcade text-primary text-sm mb-4">MENTORSHIP CIRCLES</h3>
+                    <p class="text-muted-foreground text-lg leading-relaxed">Guided small-group learning experiences where knowledge flows both ways</p>
+                </div>
+                
+                <div class="arcade-button bg-card rounded-lg p-8 text-center border-2 border-secondary hover:border-secondary hover:glow cursor-pointer">
+                    <div class="text-5xl mb-4">🔄</div>
+                    <h3 class="font-arcade text-secondary text-sm mb-4">SKILL SWAPS</h3>
+                    <p class="text-muted-foreground text-lg leading-relaxed">Teach what you know, learn what you don't in our peer-to-peer exchanges</p>
+                </div>
+                
+                <div class="arcade-button bg-card rounded-lg p-8 text-center border-2 border-accent hover:border-accent hover:glow cursor-pointer">
+                    <div class="text-5xl mb-4">📚</div>
+                    <h3 class="font-arcade text-accent text-sm mb-4">STORYTELLING</h3>
+                    <p class="text-muted-foreground text-lg leading-relaxed">A library of wisdom and personal experiences shared across generations</p>
+                </div>
+                
+                <div class="arcade-button bg-card rounded-lg p-8 text-center border-2 border-destructive hover:border-destructive hover:glow cursor-pointer">
+                    <div class="text-5xl mb-4">🤝</div>
+                    <h3 class="font-arcade text-destructive text-sm mb-4">COLLABORATIVE PROJECTS</h3>
+                    <p class="text-muted-foreground text-lg leading-relaxed">Join forces on creative and practical tasks that bridge generations</p>
+                </div>
+                
+                <div class="arcade-button bg-card rounded-lg p-8 text-center border-2 border-primary hover:border-primary hover:glow cursor-pointer">
+                    <div class="text-5xl mb-4">🎓</div>
+                    <h3 class="font-arcade text-primary text-sm mb-4">WORKSHOPS</h3>
+                    <p class="text-muted-foreground text-lg leading-relaxed">Structured, interactive events designed for collaborative learning</p>
+                </div>
+                
+                <div class="arcade-button bg-card rounded-lg p-8 text-center border-2 border-secondary hover:border-secondary hover:glow cursor-pointer">
+                    <div class="text-5xl mb-4">💬</div>
+                    <h3 class="font-arcade text-secondary text-sm mb-4">SOCIAL SPACES</h3>
+                    <p class="text-muted-foreground text-lg leading-relaxed">Safe, casual conversations in our welcoming community rooms</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: FeaturesSection -->
+
+    <!-- @COMPONENT: ChatSection -->
+    <section id="chat" class="py-20 bg-muted">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">TALK AND CONNECT</h2>
+                <p class="text-xl text-muted-foreground">Choose your conversation style</p>
+            </div>
+            
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Coffee Rooms -->
+                <div class="bg-card rounded-lg p-8 border-2 border-accent hover:glow transition-all">
+                    <div class="text-center mb-6">
+                        <div class="text-5xl mb-4">☕</div>
+                        <h3 class="font-arcade text-accent text-sm mb-2">COFFEE ROOMS</h3>
+                        <p class="text-muted-foreground text-lg">Casual friendly chats about daily life</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3 p-3 bg-background rounded">
+                            <div class="w-8 h-8 bg-pac-yellow rounded-full flex items-center justify-center text-sm">👻</div>
+                            <div>
+                                <p class="text-sm font-medium">Morning Coffee Chat</p>
+                                <p class="text-xs text-muted-foreground">12 active</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 p-3 bg-background rounded">
+                            <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-sm">👻</div>
+                            <div>
+                                <p class="text-sm font-medium">Weekend Plans</p>
+                                <p class="text-xs text-muted-foreground">8 active</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-accent text-accent-foreground py-3 rounded-full font-arcade text-sm">
+                        JOIN CHAT
+                    </button>
+                </div>
+                
+                <!-- Mentorship Rooms -->
+                <div class="bg-card rounded-lg p-8 border-2 border-primary hover:glow transition-all">
+                    <div class="text-center mb-6">
+                        <div class="text-5xl mb-4">🎯</div>
+                        <h3 class="font-arcade text-primary text-sm mb-2">MENTORSHIP ROOMS</h3>
+                        <p class="text-muted-foreground text-lg">Focused discussions on skills and topics</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3 p-3 bg-background rounded">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-sm">🎓</div>
+                            <div>
+                                <p class="text-sm font-medium">Technology Help</p>
+                                <p class="text-xs text-muted-foreground">15 active</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 p-3 bg-background rounded">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-sm">🎨</div>
+                            <div>
+                                <p class="text-sm font-medium">Creative Arts</p>
+                                <p class="text-xs text-muted-foreground">9 active</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-primary text-primary-foreground py-3 rounded-full font-arcade text-sm">
+                        JOIN ROOM
+                    </button>
+                </div>
+                
+                <!-- Private Messaging -->
+                <div class="bg-card rounded-lg p-8 border-2 border-secondary hover:glow transition-all">
+                    <div class="text-center mb-6">
+                        <div class="text-5xl mb-4">💌</div>
+                        <h3 class="font-arcade text-secondary text-sm mb-2">PRIVATE MESSAGING</h3>
+                        <p class="text-muted-foreground text-lg">Simple, secure one-on-one conversations</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-background rounded">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-sm">👤</div>
+                                <div>
+                                    <p class="text-sm font-medium">Recent Messages</p>
+                                    <p class="text-xs text-muted-foreground">3 unread</p>
+                                </div>
+                            </div>
+                            <div class="w-3 h-3 bg-destructive rounded-full"></div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button class="arcade-button text-sm bg-background text-foreground px-4 py-2 rounded border border-border hover:border-secondary">
+                                <i class="fas fa-text-height mr-2"></i>Enlarge Text
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-secondary text-secondary-foreground py-3 rounded-full font-arcade text-sm">
+                        OPEN MESSAGES
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Topic Tags -->
+            <div class="mt-12 text-center">
+                <h3 class="font-arcade text-foreground text-lg mb-6">POPULAR TOPICS</h3>
+                <div class="flex flex-wrap gap-3 justify-center">
+                    <span class="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium">#Technology</span>
+                    <span class="bg-secondary text-secondary-foreground px-4 py-2 rounded-full text-sm font-medium">#Cooking</span>
+                    <span class="bg-accent text-accent-foreground px-4 py-2 rounded-full text-sm font-medium">#Gardening</span>
+                    <span class="bg-destructive text-destructive-foreground px-4 py-2 rounded-full text-sm font-medium">#History</span>
+                    <span class="bg-muted text-muted-foreground px-4 py-2 rounded-full text-sm font-medium">#Music</span>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: ChatSection -->
+
+    <!-- @COMPONENT: ResourcesSection -->
+    <section id="resources" class="py-20 bg-background">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">LEARN AND EXPLORE</h2>
+                <p class="text-xl text-muted-foreground">Your guide to getting the most out of Bridgen</p>
+            </div>
+            
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- FAQs -->
+                <div class="bg-card rounded-lg p-8 border-2 border-primary">
+                    <div class="text-center mb-6">
+                        <div class="text-5xl mb-4">❓</div>
+                        <h3 class="font-arcade text-primary text-lg mb-4">FAQS</h3>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="border-b border-border pb-4">
+                            <h4 class="text-foreground font-medium mb-2">How do I join a mentorship circle?</h4>
+                            <p class="text-sm text-muted-foreground">Click on Features, then Mentorship Circles, and browse available groups that match your interests.</p>
+                        </div>
+                        <div class="border-b border-border pb-4">
+                            <h4 class="text-foreground font-medium mb-2">Is Bridgen safe for seniors?</h4>
+                            <p class="text-sm text-muted-foreground">Yes! We have strict verification, moderation, and privacy controls to ensure a safe environment.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-foreground font-medium mb-2">Can I use voice chat?</h4>
+                            <p class="text-sm text-muted-foreground">Absolutely! We support both text and voice messaging for comfortable communication.</p>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-primary text-primary-foreground py-3 rounded-full font-arcade text-sm">
+                        VIEW ALL FAQS
+                    </button>
+                </div>
+                
+                <!-- Video Tutorials -->
+                <div class="bg-card rounded-lg p-8 border-2 border-secondary">
+                    <div class="text-center mb-6">
+                        <div class="text-5xl mb-4">🎥</div>
+                        <h3 class="font-arcade text-secondary text-lg mb-4">VIDEO TUTORIALS</h3>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-background rounded p-4 flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-secondary rounded flex items-center justify-center">
+                                <i class="fas fa-play text-secondary-foreground"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-foreground font-medium">Getting Started Guide</h4>
+                                <p class="text-xs text-muted-foreground">5 minutes</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-background rounded p-4 flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-secondary rounded flex items-center justify-center">
+                                <i class="fas fa-play text-secondary-foreground"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-foreground font-medium">Creating Your Profile</h4>
+                                <p class="text-xs text-muted-foreground">3 minutes</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-background rounded p-4 flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-secondary rounded flex items-center justify-center">
+                                <i class="fas fa-play text-secondary-foreground"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-foreground font-medium">Using Chat Features</h4>
+                                <p class="text-xs text-muted-foreground">7 minutes</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-secondary text-secondary-foreground py-3 rounded-full font-arcade text-sm">
+                        WATCH TUTORIALS
+                    </button>
+                </div>
+                
+                <!-- Community Guidelines -->
+                <div class="bg-card rounded-lg p-8 border-2 border-accent">
+                    <div class="text-center mb-6">
+                        <div class="text-5xl mb-4">🤝</div>
+                        <h3 class="font-arcade text-accent text-lg mb-4">COMMUNITY GUIDELINES</h3>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-accent rounded-full mt-2 flex-shrink-0"></div>
+                            <p class="text-sm text-muted-foreground">Be respectful and kind to all community members</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-accent rounded-full mt-2 flex-shrink-0"></div>
+                            <p class="text-sm text-muted-foreground">Share knowledge and experiences openly</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-accent rounded-full mt-2 flex-shrink-0"></div>
+                            <p class="text-sm text-muted-foreground">Maintain privacy and confidentiality</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-accent rounded-full mt-2 flex-shrink-0"></div>
+                            <p class="text-sm text-muted-foreground">Report inappropriate behavior</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-accent rounded-full mt-2 flex-shrink-0"></div>
+                            <p class="text-sm text-muted-foreground">Have fun and learn together!</p>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-accent text-accent-foreground py-3 rounded-full font-arcade text-sm">
+                        READ FULL GUIDELINES
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: ResourcesSection -->
+
+    <!-- @COMPONENT: ProfileSection -->
+    <section id="profile" class="py-20 bg-muted">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">YOUR PROFILE</h2>
+                <p class="text-xl text-muted-foreground">Customize your Bridgen experience</p>
+            </div>
+            
+            <div class="bg-card rounded-lg p-8">
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <!-- Profile Picture & Avatar -->
+                    <div class="text-center">
+                        <div class="w-32 h-32 mx-auto mb-6 bg-primary rounded-full flex items-center justify-center text-6xl">
+                            👻
+                        </div>
+                        <h3 class="font-arcade text-primary text-sm mb-4">CHOOSE AVATAR</h3>
+                        <div class="flex justify-center space-x-2 mb-6">
+                            <button class="w-12 h-12 bg-pac-yellow rounded-full flex items-center justify-center text-xl hover:glow">🟡</button>
+                            <button class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center text-xl hover:glow">👻</button>
+                            <button class="w-12 h-12 bg-destructive rounded-full flex items-center justify-center text-xl hover:glow">👹</button>
+                            <button class="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-xl hover:glow">🧙</button>
+                        </div>
+                        <button class="arcade-button bg-primary text-primary-foreground px-6 py-2 rounded-full font-arcade text-xs">
+                            UPLOAD PHOTO
+                        </button>
+                    </div>
+                    
+                    <!-- Skills & Interests -->
+                    <div class="lg:col-span-2">
+                        <div class="grid gap-6">
+                            <!-- Skills You Can Teach -->
+                            <div>
+                                <h3 class="font-arcade text-secondary text-sm mb-3">SKILLS YOU CAN TEACH</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm">Cooking</span>
+                                    <span class="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm">Gardening</span>
+                                    <span class="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm">History</span>
+                                    <button class="bg-background text-foreground px-3 py-1 rounded-full text-sm border border-border hover:border-secondary">
+                                        <i class="fas fa-plus mr-1"></i>Add Skill
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Skills You're Learning -->
+                            <div>
+                                <h3 class="font-arcade text-accent text-sm mb-3">SKILLS YOU'RE LEARNING</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="bg-accent text-accent-foreground px-3 py-1 rounded-full text-sm">Social Media</span>
+                                    <span class="bg-accent text-accent-foreground px-3 py-1 rounded-full text-sm">Photography</span>
+                                    <button class="bg-background text-foreground px-3 py-1 rounded-full text-sm border border-border hover:border-accent">
+                                        <i class="fas fa-plus mr-1"></i>Add Interest
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Stories & Badges -->
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 class="font-arcade text-primary text-sm mb-3">STORIES SHARED</h3>
+                                    <div class="text-2xl font-bold text-primary">7</div>
+                                    <p class="text-sm text-muted-foreground">Total stories published</p>
+                                </div>
+                                <div>
+                                    <h3 class="font-arcade text-destructive text-sm mb-3">BADGES EARNED</h3>
+                                    <div class="flex space-x-2">
+                                        <div class="text-2xl" title="First Story">🍒</div>
+                                        <div class="text-2xl" title="Helpful Mentor">🍓</div>
+                                        <div class="text-2xl" title="Active Learner">🍊</div>
+                                        <div class="text-2xl" title="Community Builder">🍎</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="arcade-button w-full mt-8 bg-primary text-primary-foreground py-3 rounded-full font-arcade text-sm">
+                            <i class="fas fa-edit mr-2"></i>EDIT PROFILE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: ProfileSection -->
+
+    <!-- @COMPONENT: MatchMeSection -->
+    <section id="match-me" class="py-20 bg-background">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">FIND YOUR MATCH</h2>
+                <p class="text-xl text-muted-foreground">Connect with the perfect learning partner</p>
+            </div>
+            
+            <div class="grid lg:grid-cols-2 gap-12">
+                <!-- Matching Process -->
+                <div class="bg-card rounded-lg p-8">
+                    <h3 class="font-arcade text-secondary text-lg mb-6 text-center">HOW IT WORKS</h3>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-arcade text-primary-foreground text-sm">1</div>
+                            <div>
+                                <h4 class="text-foreground font-medium mb-1">Fill Out Your Interests</h4>
+                                <p class="text-sm text-muted-foreground">Tell us what you want to teach and learn</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center font-arcade text-secondary-foreground text-sm">2</div>
+                            <div>
+                                <h4 class="text-foreground font-medium mb-1">AI Finds Your Match</h4>
+                                <p class="text-sm text-muted-foreground">Our system pairs you with compatible partners</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-accent rounded-full flex items-center justify-center font-arcade text-accent-foreground text-sm">3</div>
+                            <div>
+                                <h4 class="text-foreground font-medium mb-1">Schedule & Connect</h4>
+                                <p class="text-sm text-muted-foreground">Pick a time that works for both of you</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h4 class="font-arcade text-primary text-sm mb-4">QUICK INTERESTS</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <button class="bg-primary text-primary-foreground px-3 py-2 rounded-full text-sm hover:glow">Technology</button>
+                            <button class="bg-background text-foreground px-3 py-2 rounded-full text-sm border border-border hover:border-primary">Cooking</button>
+                            <button class="bg-background text-foreground px-3 py-2 rounded-full text-sm border border-border hover:border-primary">Art</button>
+                            <button class="bg-background text-foreground px-3 py-2 rounded-full text-sm border border-border hover:border-primary">Music</button>
+                            <button class="bg-background text-foreground px-3 py-2 rounded-full text-sm border border-border hover:border-primary">Languages</button>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-8 bg-primary text-primary-foreground py-4 rounded-full font-arcade text-sm">
+                        <i class="fas fa-search mr-2"></i>FIND MY MATCH
+                    </button>
+                </div>
+                
+                <!-- Scheduling Calendar -->
+                <div class="bg-card rounded-lg p-8">
+                    <h3 class="font-arcade text-secondary text-lg mb-6 text-center">SCHEDULE SESSION</h3>
+                    
+                    <!-- Calendar Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <button class="text-muted-foreground hover:text-foreground">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h4 class="font-arcade text-foreground text-sm">DECEMBER 2024</h4>
+                        <button class="text-muted-foreground hover:text-foreground">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Calendar Grid -->
+                    <div class="grid grid-cols-7 gap-2 mb-6">
+                        <div class="text-center text-xs text-muted-foreground p-2">SUN</div>
+                        <div class="text-center text-xs text-muted-foreground p-2">MON</div>
+                        <div class="text-center text-xs text-muted-foreground p-2">TUE</div>
+                        <div class="text-center text-xs text-muted-foreground p-2">WED</div>
+                        <div class="text-center text-xs text-muted-foreground p-2">THU</div>
+                        <div class="text-center text-xs text-muted-foreground p-2">FRI</div>
+                        <div class="text-center text-xs text-muted-foreground p-2">SAT</div>
+                        
+                        <!-- Calendar Days -->
+                        <div class="text-center p-2 text-sm text-muted-foreground">1</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">2</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">3</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">4</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">5</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">6</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">7</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">8</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">9</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">10</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">11</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">12</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">13</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">14</div>
+                        <div class="arcade-button text-center p-2 text-sm bg-primary text-primary-foreground rounded">15</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">16</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">17</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">18</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">19</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">20</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">21</div>
+                        <div class="arcade-button text-center p-2 text-sm bg-secondary text-secondary-foreground rounded">22</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">23</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">24</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">25</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">26</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">27</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">28</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">29</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">30</div>
+                        <div class="text-center p-2 text-sm text-muted-foreground">31</div>
+                    </div>
+                    
+                    <!-- Time Slots -->
+                    <div>
+                        <h4 class="font-arcade text-accent text-sm mb-4">AVAILABLE TIMES - DEC 15</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="arcade-button bg-background text-foreground p-3 rounded border border-border hover:border-accent text-sm">
+                                10:00 AM
+                            </button>
+                            <button class="arcade-button bg-background text-foreground p-3 rounded border border-border hover:border-accent text-sm">
+                                2:00 PM
+                            </button>
+                            <button class="arcade-button bg-background text-foreground p-3 rounded border border-border hover:border-accent text-sm">
+                                4:00 PM
+                            </button>
+                            <button class="arcade-button bg-background text-foreground p-3 rounded border border-border hover:border-accent text-sm">
+                                7:00 PM
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button class="arcade-button w-full mt-6 bg-accent text-accent-foreground py-3 rounded-full font-arcade text-sm">
+                        <i class="fas fa-calendar-check mr-2"></i>CONFIRM SESSION
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: MatchMeSection -->
+
+    <!-- @COMPONENT: DownloadSection -->
+    <section id="download" class="py-20 bg-muted">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">GET BRIDGEN ANYWHERE</h2>
+            <p class="text-xl text-muted-foreground mb-12">Access your intergenerational community on any device</p>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Mobile Apps -->
+                <div class="bg-card rounded-lg p-8">
+                    <div class="text-5xl mb-4">📱</div>
+                    <h3 class="font-arcade text-secondary text-sm mb-4">MOBILE APP</h3>
+                    <p class="text-muted-foreground mb-6">Chat on the go with our mobile app</p>
+                    <div class="space-y-3">
+                        <button class="arcade-button w-full bg-secondary text-secondary-foreground py-3 rounded-full font-arcade text-sm">
+                            <i class="fab fa-apple mr-2"></i>iOS APP
+                        </button>
+                        <button class="arcade-button w-full bg-secondary text-secondary-foreground py-3 rounded-full font-arcade text-sm">
+                            <i class="fab fa-android mr-2"></i>ANDROID APP
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Desktop Apps -->
+                <div class="bg-card rounded-lg p-8">
+                    <div class="text-5xl mb-4">💻</div>
+                    <h3 class="font-arcade text-primary text-sm mb-4">DESKTOP APP</h3>
+                    <p class="text-muted-foreground mb-6">Full featured experience for your computer</p>
+                    <div class="space-y-3">
+                        <button class="arcade-button w-full bg-primary text-primary-foreground py-3 rounded-full font-arcade text-sm">
+                            <i class="fab fa-windows mr-2"></i>WINDOWS
+                        </button>
+                        <button class="arcade-button w-full bg-primary text-primary-foreground py-3 rounded-full font-arcade text-sm">
+                            <i class="fab fa-apple mr-2"></i>MAC OS
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- PDF Guide -->
+                <div class="bg-card rounded-lg p-8">
+                    <div class="text-5xl mb-4">📄</div>
+                    <h3 class="font-arcade text-accent text-sm mb-4">STARTER GUIDE</h3>
+                    <p class="text-muted-foreground mb-6">Printable guide for easy reference</p>
+                    <div class="space-y-3">
+                        <button class="arcade-button w-full bg-accent text-accent-foreground py-3 rounded-full font-arcade text-sm">
+                            <i class="fas fa-download mr-2"></i>DOWNLOAD PDF
+                        </button>
+                        <button class="arcade-button w-full bg-background text-foreground py-3 rounded-full text-sm border border-border hover:border-accent">
+                            <i class="fas fa-print mr-2"></i>PRINT VERSION
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: DownloadSection -->
+
+    <!-- @COMPONENT: FollowUsSection -->
+    <section id="follow-us" class="py-20 bg-background">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">STAY CONNECTED</h2>
+                <p class="text-xl text-muted-foreground">Join our growing community across all platforms</p>
+            </div>
+            
+            <div class="grid lg:grid-cols-3 gap-12">
+                <!-- Social Media -->
+                <div class="text-center">
+                    <h3 class="font-arcade text-secondary text-lg mb-6">FOLLOW US</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="arcade-button bg-card text-foreground p-6 rounded-lg border-2 border-secondary hover:glow">
+                            <i class="fab fa-facebook text-3xl mb-2 block"></i>
+                            <span class="text-sm">Facebook</span>
+                        </button>
+                        <button class="arcade-button bg-card text-foreground p-6 rounded-lg border-2 border-secondary hover:glow">
+                            <i class="fab fa-twitter text-3xl mb-2 block"></i>
+                            <span class="text-sm">Twitter</span>
+                        </button>
+                        <button class="arcade-button bg-card text-foreground p-6 rounded-lg border-2 border-secondary hover:glow">
+                            <i class="fab fa-instagram text-3xl mb-2 block"></i>
+                            <span class="text-sm">Instagram</span>
+                        </button>
+                        <button class="arcade-button bg-card text-foreground p-6 rounded-lg border-2 border-secondary hover:glow">
+                            <i class="fab fa-youtube text-3xl mb-2 block"></i>
+                            <span class="text-sm">YouTube</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Newsletter -->
+                <div class="text-center">
+                    <h3 class="font-arcade text-accent text-lg mb-6">NEWSLETTER</h3>
+                    <div class="bg-card rounded-lg p-6">
+                        <div class="text-4xl mb-4">📧</div>
+                        <p class="text-muted-foreground mb-6">Get weekly updates, success stories, and tips</p>
+                        <div class="space-y-4">
+                            <input 
+                                type="email" 
+                                placeholder="your.email@example.com" 
+                                class="w-full p-3 rounded bg-background border border-border text-foreground text-lg focus:border-accent focus:outline-none"
+                            >
+                            <button class="arcade-button w-full bg-accent text-accent-foreground py-3 rounded-full font-arcade text-sm">
+                                <i class="fas fa-envelope mr-2"></i>SUBSCRIBE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Community Stats -->
+                <div class="text-center">
+                    <h3 class="font-arcade text-primary text-lg mb-6">COMMUNITY IMPACT</h3>
+                    <div class="bg-card rounded-lg p-6 space-y-6">
+                        <div>
+                            <div class="text-3xl font-bold text-primary mb-1">15,847</div>
+                            <p class="text-sm text-muted-foreground">Mentorship Hours</p>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-secondary mb-1">3,291</div>
+                            <p class="text-sm text-muted-foreground">Stories Shared</p>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-accent mb-1">892</div>
+                            <p class="text-sm text-muted-foreground">Projects Started</p>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-destructive mb-1">47</div>
+                            <p class="text-sm text-muted-foreground">Countries Connected</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: FollowUsSection -->
+
+    <!-- @COMPONENT: GetStartedSection -->
+    <section id="get-started" class="py-20 bg-muted">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="font-arcade text-primary text-2xl md:text-4xl mb-6">START YOUR JOURNEY</h2>
+            <p class="text-xl text-muted-foreground mb-12">Follow Pac-Man through your Bridgen adventure</p>
+            
+            <!-- Interactive Onboarding Maze -->
+            <div class="bg-card rounded-lg p-8 maze-pattern">
+                <div class="relative">
+                    <!-- Maze Path -->
+                    <div class="flex items-center justify-center space-x-8 mb-8">
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-2xl mb-2">🟡</div>
+                            <p class="text-sm text-primary font-arcade">START</p>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                        </div>
+                        
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-secondary rounded-full flex items-center justify-center text-xl mb-2">👥</div>
+                            <p class="text-xs text-secondary font-arcade">JOIN CIRCLE</p>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                        </div>
+                        
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center text-xl mb-2">🔄</div>
+                            <p class="text-xs text-accent font-arcade">SKILL SWAP</p>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                            <div class="w-3 h-3 bg-pac-yellow rounded-full"></div>
+                        </div>
+                        
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-destructive rounded-full flex items-center justify-center text-xl mb-2">🏆</div>
+                            <p class="text-xs text-destructive font-arcade">SUCCESS!</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Steps Description -->
+                    <div class="grid md:grid-cols-3 gap-6 mb-8">
+                        <div class="text-center">
+                            <h4 class="font-arcade text-secondary text-sm mb-2">STEP 1: JOIN A CIRCLE</h4>
+                            <p class="text-sm text-muted-foreground">Find a mentorship group that matches your interests</p>
+                        </div>
+                        <div class="text-center">
+                            <h4 class="font-arcade text-accent text-sm mb-2">STEP 2: TRY A SKILL SWAP</h4>
+                            <p class="text-sm text-muted-foreground">Share your knowledge and learn something new</p>
+                        </div>
+                        <div class="text-center">
+                            <h4 class="font-arcade text-destructive text-sm mb-2">STEP 3: CELEBRATE SUCCESS</h4>
+                            <p class="text-sm text-muted-foreground">Earn badges and make meaningful connections</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="arcade-button bg-primary text-primary-foreground px-12 py-6 rounded-full font-arcade text-lg hover:glow">
+                    <i class="fas fa-rocket mr-3"></i>BEGIN ADVENTURE
+                </button>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: GetStartedSection -->
+
+    <!-- @COMPONENT: Footer -->
+    <footer class="bg-arcade-black text-foreground py-12 border-t border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="font-arcade text-primary text-xl mb-4">BRIDGEN</div>
+                    <p class="text-muted-foreground text-sm mb-4">Connecting generations through shared wisdom and learning.</p>
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                        <div class="w-2 h-2 bg-pac-yellow rounded-full"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="font-arcade text-secondary text-sm mb-4">FEATURES</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#features" class="text-muted-foreground hover:text-secondary">Mentorship Circles</a></li>
+                        <li><a href="#features" class="text-muted-foreground hover:text-secondary">Skill Swaps</a></li>
+                        <li><a href="#features" class="text-muted-foreground hover:text-secondary">Storytelling</a></li>
+                        <li><a href="#features" class="text-muted-foreground hover:text-secondary">Workshops</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-arcade text-accent text-sm mb-4">SUPPORT</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#resources" class="text-muted-foreground hover:text-accent">Help Center</a></li>
+                        <li><a href="#resources" class="text-muted-foreground hover:text-accent">Video Tutorials</a></li>
+                        <li><a href="#resources" class="text-muted-foreground hover:text-accent">Community Guidelines</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-accent">Contact Us</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-arcade text-primary text-sm mb-4">LEGAL</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="text-muted-foreground hover:text-primary">Privacy Policy</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary">Terms of Service</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary">Cookie Policy</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary">Accessibility</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-border mt-12 pt-8 text-center">
+                <p class="text-muted-foreground text-sm">
+                    © 2024 Bridgen. Made with ❤️ for connecting generations.
+                </p>
+                <div class="flex justify-center items-center mt-4 space-x-2">
+                    <span class="text-xs text-muted-foreground">Powered by</span>
+                    <div class="text-lg">🟡</div>
+                    <span class="text-xs text-muted-foreground">arcade nostalgia</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+        (function() {
+            // Accessibility Toggle
+            const accessibilityToggle = document.getElementById('accessibilityToggle');
+            if (accessibilityToggle) {
+                accessibilityToggle.addEventListener('click', function() {
+                    document.body.classList.toggle('high-contrast');
+                    const isHighContrast = document.body.classList.contains('high-contrast');
+                    this.innerHTML = isHighContrast ? 
+                        '<i class="fas fa-eye-slash mr-2"></i>Normal View' : 
+                        '<i class="fas fa-eye mr-2"></i>Clear View';
+                });
+            }
+
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // TODO: Implement business logic for form submissions, user matching, calendar scheduling
+            // TODO: Add API calls for real-time chat functionality
+            // TODO: Implement user authentication and profile management
+            // TODO: Add gamification system with real badge tracking
+            // TODO: Integrate video calling for mentorship sessions
+        })();
+    </script>
+</body>
+</html>
