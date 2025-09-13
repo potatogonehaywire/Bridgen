@@ -39,6 +39,16 @@ export async function authenticateToken(req: AuthenticatedRequest, res: Response
     return res.status(401).json({ error: "Access token required" });
   }
 
+  // Demo mode: allow demo token for development
+  if (token.startsWith("demo-") && process.env.NODE_ENV === "development") {
+    req.user = {
+      id: "user2",
+      username: "DemoUser",
+      email: "demo@example.com",
+    };
+    return next();
+  }
+
   const decoded = verifyToken(token);
   if (!decoded) {
     return res.status(403).json({ error: "Invalid or expired token" });

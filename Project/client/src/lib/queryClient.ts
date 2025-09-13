@@ -7,6 +7,11 @@ function log(...args: any[]) {
   if (DEBUG) console.log("[queryClient]", ...args);
 }
 
+// Simple demo token creator (NOT secure, only for demo purposes)
+function createDemoToken(): string {
+  return "demo-token-for-user2";
+}
+
 async function throwIfResNotOk(res: Response): Promise<void> {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -25,9 +30,22 @@ export async function apiRequest<T = any>(
   log("API Request:", method, fullUrl, data);
 
   try {
+    // Get token from localStorage if available, otherwise generate demo token
+    let token = localStorage.getItem("auth_token");
+    if (!token) {
+      // Create a demo JWT token for user2
+      token = createDemoToken();
+      localStorage.setItem("auth_token", token);
+    }
+    
+    const headers: Record<string, string> = {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      "Authorization": `Bearer ${token}`,
+    };
+
     const res = await fetch(fullUrl, {
       method,
-      headers: data ? { "Content-Type": "application/json" } : {},
+      headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
     });
@@ -58,7 +76,18 @@ export const getQueryFn =
     log("Query Fetch:", fullUrl);
 
     try {
+      // Get token from localStorage if available, otherwise generate demo token
+      let token = localStorage.getItem("auth_token");
+      if (!token) {
+        // Create a demo JWT token for user2
+        token = createDemoToken();
+        localStorage.setItem("auth_token", token);
+      }
+      
       const res = await fetch(fullUrl, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
         credentials: "include",
       });
 

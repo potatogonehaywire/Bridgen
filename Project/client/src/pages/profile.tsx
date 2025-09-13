@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,10 +28,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { apiRequest } from "@/lib/queryClient";
+import { 
+  localDb, 
+  User, 
+  Skill, 
+  UserSkill, 
+  SkillMatch 
+} from "@/lib/localDb";
 import { useToast } from "@/hooks/use-toast";
 import {
-  User,
+  User as UserIcon,
   Zap,
   Star,
   TrendingUp,
@@ -43,42 +50,8 @@ import {
 import Navigation from "@/components/navigation";
 import TypewriterText from "@/components/typewriter-text";
 
-interface UserProfile {
-  id: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  age: number;
-  bio: string;
-  profile_image_url: string;
-  points: number;
-  level: number;
+interface UserProfile extends User {
   skills: UserSkill[];
-}
-
-interface UserSkill {
-  id: string;
-  skill: Skill;
-  proficiency_level: number;
-  want_to_teach: boolean;
-  want_to_learn: boolean;
-  years_experience: number;
-}
-
-interface Skill {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  icon: string;
-}
-
-interface SkillMatch {
-  user: UserProfile;
-  skill: Skill;
-  match_percentage: number;
-  match_type: "teacher" | "student";
-  teacher_experience?: number;
 }
 
 interface SkillPercentiles {
@@ -93,10 +66,11 @@ interface SkillPercentiles {
 }
 
 export default function Profile() {
+  const [location, navigate] = useLocation();
   const [editMode, setEditMode] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [showSkillSwapResults, setShowSkillSwapResults] = useState(false);
-  const [skillSwapMatches, setSkillSwapMatches] = useState([]);
+  const [skillSwapMatches, setSkillSwapMatches] = useState<any[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState("");
   const [skillForm, setSkillForm] = useState({
     proficiency_level: 1,
@@ -111,6 +85,46 @@ export default function Profile() {
     bio: "",
   });
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // 1️⃣ Get current auth user (demo user)
+  const { data: authUser, isLoading: loadingAuth } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      // Simulate network delay for realistic experience
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return {
+        id: "user2",
+        username: "DemoUser",
+        email: "demo@example.com"
+      };
+    },
+  });
+
+  const userId = (authUser as any)?.id;
+
+  // 2️⃣ Fetch profile, skills, matches, gamification
+  const { data: userProfile, isLoading: loadingProfile } = useQuery<UserProfile>({
+    queryKey: ["user-profile", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      const user = localDb.getUser(userId!);
+      if (!user) throw new Error("User not found");
+      
+      const userSkills = localDb.getUserSkills(userId!);
+      console.log("User skills loaded:", userSkills);
+      
+      return {
+        ...user,
+        skills: userSkills
+      };
+    }
+  });
+
   // Initialize form with profile data
   useEffect(() => {
     if (userProfile) {
@@ -123,83 +137,72 @@ export default function Profile() {
     }
   }, [userProfile]);
 
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // 1️⃣ Get current auth user
-  const { data: authUser, isLoading: loadingAuth } = useQuery({
-    queryKey: ["/api/auth/me"],
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", "/api/auth/me");
-      } catch (error) {
-        // Return demo user if auth fails
-        return {
-          id: "user2",
-          username: "DemoUser",
-          email: "demo@example.com"
-        };
-      }
-    },
-  });
-
-  const userId = (authUser as any)?.id;
-
-  // 2️⃣ Fetch profile, skills, matches, gamification
-  const { data: userProfile, isLoading: loadingProfile } = useQuery<UserProfile>({
-    queryKey: ["/api/users", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", `/api/users/${userId}`);
-      } catch (error) {
-        // Fallback to demo data if API fails
-        console.log("API failed, using demo data");
-        return {
-          id: userId || "demo-user",
-          username: authUser?.username || "DemoUser",
-          first_name: "Demo",
-          last_name: "User",
-          age: 25,
-          bio: "This is a demo profile. Edit functionality is working!",
-          profile_image_url: "",
-          points: 150,
-          level: 3,
-          skills: []
-        };
-      }
-    }
-  });
-
   const { data: availableSkills } = useQuery<Skill[]>({
-    queryKey: ["/api/skills"],
+    queryKey: ["all-skills"],
+    queryFn: async () => {
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return localDb.getAllSkills();
+    }
   });
 
   const { data: skillMatches, isLoading: loadingMatches } = useQuery<
     SkillMatch[]
   >({
-    queryKey: ["/api/skill-matches", userId],
+    queryKey: ["skill-matches", userId],
     enabled: !!userId,
+    queryFn: async () => {
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const matches = localDb.getSkillMatches(userId!);
+      console.log("Skill matches loaded:", matches);
+      return matches;
+    }
   });
 
   const { data: skillPercentiles } = useQuery<SkillPercentiles>({
-    queryKey: ["/api/skill-matches/percentiles"],
+    queryKey: ["skill-percentiles"],
+    queryFn: async () => {
+      // Simple mock percentiles for demo
+      await new Promise(resolve => setTimeout(resolve, 50));
+      return {
+        "JavaScript": { percentiles: { "25th": 3, "50th": 5, "75th": 7, "90th": 9 } },
+        "Python": { percentiles: { "25th": 3, "50th": 5, "75th": 7, "90th": 9 } },
+        "Cooking": { percentiles: { "25th": 2, "50th": 4, "75th": 6, "90th": 8 } },
+        "Painting": { percentiles: { "25th": 2, "50th": 4, "75th": 6, "90th": 8 } }
+      };
+    }
   });
 
   const { data: gamState } = useQuery<any>({
-    queryKey: ["/api/gam/state", userId],
+    queryKey: ["gam-state", userId],
     enabled: !!userId,
+    queryFn: async () => {
+      // Get points and level from user profile
+      const user = localDb.getUser(userId!);
+      return {
+        points: user?.points || 0,
+        level: user?.level || 1
+      };
+    }
   });
 
   // 3️⃣ Mutations
   const skillSwapMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`http://localhost:5001/api/skill-swap/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw new Error('Failed to find skill swap matches');
-      return response.json();
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get skill matches and format for skill swap
+      const matches = localDb.getSkillMatches(userId!);
+      const users = matches.map(match => ({
+        user: match.user,
+        match_percentage: match.match_percentage,
+        compatibility_score: Math.round(match.match_percentage * 0.8),
+        shared_interests: [match.skill.name, match.skill.category]
+      }));
+      
+      return { matches: users };
     },
     onSuccess: (data) => {
       setSkillSwapMatches(data.matches || []);
@@ -220,17 +223,23 @@ export default function Profile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: Partial<UserProfile>) => {
-      // For now, let's just simulate a successful update
-      // In a real app, this would call the API
-      console.log("Updating profile with data:", data);
-      return Promise.resolve(data);
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update user in local storage
+      const updatedUser = localDb.updateUser(userId!, data);
+      if (!updatedUser) throw new Error("Failed to update user");
+      
+      return updatedUser;
     },
     onSuccess: () => {
-      // Update the form data locally
-      setProfileForm(prev => ({ ...prev }));
+      // Invalidate queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ["user-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["gam-state", userId] });
+      
       toast({
         title: "Profile Updated",
-        description: "Your profile has been successfully updated! (Note: This is a demo - changes are not persisted)",
+        description: "Your profile has been successfully updated!",
       });
       setEditMode(false);
     },
@@ -244,24 +253,31 @@ export default function Profile() {
 
   const addSkillMutation = useMutation({
     mutationFn: async (skillData: any) => {
-      await apiRequest("POST", `/api/users/${userId}/skills`, {
-        skill_id: selectedSkillId,
-        ...skillData,
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Add skill to local storage
+      const newUserSkill = localDb.addUserSkill(userId!, {
+        skillId: selectedSkillId,
+        proficiency_level: skillData.proficiency_level,
+        want_to_teach: skillData.want_to_teach,
+        want_to_learn: skillData.want_to_learn,
+        years_experience: skillData.years_experience,
       });
-      await apiRequest("POST", `/api/gam/earn`, {
-        points: 50,
-        reason: "Added a new skill",
-      });
+      
+      // Add points for adding a skill
+      localDb.addPoints(userId!, 50);
+      
+      return newUserSkill;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/skill-matches", userId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/gam/state", userId] });
+      queryClient.invalidateQueries({ queryKey: ["user-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["skill-matches", userId] });
+      queryClient.invalidateQueries({ queryKey: ["gam-state", userId] });
+      
       toast({
         title: "Skill Added",
-        description: "Your skill has been successfully added!",
+        description: "Your skill has been successfully added! +50 points earned!",
       });
       setShowAddSkill(false);
       setSelectedSkillId("");
@@ -281,13 +297,20 @@ export default function Profile() {
   });
 
   const removeSkillMutation = useMutation({
-    mutationFn: (skillId: string) =>
-      apiRequest("DELETE", `/api/users/${userId}/skills/${skillId}`, {}),
+    mutationFn: async (userSkillId: string) => {
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Remove skill from local storage
+      const success = localDb.removeUserSkill(userId!, userSkillId);
+      if (!success) throw new Error("Failed to remove skill");
+      
+      return success;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/skill-matches", userId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["user-profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["skill-matches", userId] });
+      
       toast({
         title: "Skill Removed",
         description: "Skill has been removed from your profile.",
@@ -301,30 +324,7 @@ export default function Profile() {
       }),
   });
 
-  const connectMutation = useMutation({
-    mutationFn: (partnerId: string) =>
-      apiRequest("POST", `/api/messages/start`, { partner_id: partnerId }),
-    onSuccess: () =>
-      toast({ title: "Connection started", description: "Opening chat…" }),
-    onError: (err: Error) =>
-      toast({
-        title: "Error",
-        description: err.message,
-        variant: "destructive",
-      }),
-  });
 
-  // Sync profile form with fetched data
-  useEffect(() => {
-    if (userProfile) {
-      setProfileForm({
-        first_name: userProfile?.first_name || "",
-        last_name: userProfile?.last_name || "",
-        age: userProfile?.age || 0,
-        bio: userProfile?.bio || "",
-      });
-    }
-  }, [userProfile]);
 
   // 5️⃣ Helpers
   const getSkillIcon = (iconName: string) =>
@@ -530,39 +530,42 @@ export default function Profile() {
             </CardHeader>
             <CardContent>
               <ul className="list-none space-y-2">
-                {userProfile?.skills?.map((userSkill) => (
-                  <li
-                    key={userSkill.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center">
-                      {getSkillIcon(userSkill.skill.icon)}
-                      <span className="ml-2">{userSkill.skill.name}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge
-                        className={getProficiencyColor(
-                          userSkill.proficiency_level,
-                        )}
-                      >
-                        Level {userSkill.proficiency_level}
-                      </Badge>
-                      <Badge variant="outline">
-                        {getPercentileRank(
-                          userSkill.skill.name,
-                          userSkill.proficiency_level,
-                        )}
-                      </Badge>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => removeSkillMutation.mutate(userSkill.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
+                {userProfile?.skills?.map((userSkill) => {
+                  if (!userSkill.skill) return null;
+                  return (
+                    <li
+                      key={userSkill.id}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center">
+                        {getSkillIcon(userSkill.skill.icon)}
+                        <span className="ml-2">{userSkill.skill.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge
+                          className={getProficiencyColor(
+                            userSkill.proficiency_level,
+                          )}
+                        >
+                          Level {userSkill.proficiency_level}
+                        </Badge>
+                        <Badge variant="outline">
+                          {getPercentileRank(
+                            userSkill.skill.name,
+                            userSkill.proficiency_level,
+                          )}
+                        </Badge>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => removeSkillMutation.mutate(userSkill.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
               <Dialog open={showAddSkill} onOpenChange={setShowAddSkill}>
                 <DialogTrigger asChild>
@@ -693,13 +696,21 @@ export default function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!skillMatches || skillMatches.length === 0 ? (
+              {loadingMatches ? (
                 <p className="text-sm text-muted-foreground">
-                  No matches found. Add more skills to find potential
-                  connections!
+                  Loading matches...
+                </p>
+              ) : !skillMatches || skillMatches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No matches found. Add more skills to find potential connections!
+                  {userId && <span className="block mt-2">Debug: User ID is {userId}</span>}
                 </p>
               ) : (
-                <ul className="list-none space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Found {skillMatches.length} potential matches
+                  </p>
+                  <ul className="list-none space-y-4">
                   {skillMatches?.map((match: SkillMatch) => (
                     <li
                       key={`${match.user.id}-${match.skill.id}`}
@@ -740,81 +751,22 @@ export default function Profile() {
                           )}
                         </div>
                         <Button
-                          onClick={() => connectMutation.mutate(match.user.id)}
+                          onClick={() => {
+                            console.log("Connect button clicked for user:", match.user.id);
+                            navigate(`/chat?with=${match.user.id}`);
+                            toast({
+                              title: "Opening Chat",
+                              description: `Starting conversation with ${match.user.username}`,
+                            });
+                          }}
                         >
                           Connect
                         </Button>
                       </div>
                     </li>
                   ))}
-                </ul>
-              )}
-            {/* </CardContent>
-          </Card> */}
-          {/* Skill Groups Card */}
-          {/* <Card className="col-span-1 md:col-span-1"> */}
-            <CardHeader>
-              <CardTitle className="text-2xl font-semibold">Groups</CardTitle>
-              <CardDescription>
-                Potential teachers and students based on your skills.
-              </CardDescription>
-            </CardHeader>
-            {/* <CardContent> */}
-              {!skillMatches || skillMatches.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No matches found. Add more skills to find potential
-                  connections!
-                </p>
-              ) : (
-                <ul className="list-none space-y-4">
-                  {skillMatches?.map((match: SkillMatch) => (
-                    <li
-                      key={`${match.user.id}-${match.skill.id}`}
-                      className="border rounded-md p-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-lg font-semibold">
-                            {match.user.username}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Skill: {match.skill.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Match:{" "}
-                            <Badge variant="secondary">
-                              {" "}
-                              {match.match_percentage}%
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Type:{" "}
-                            {match.match_type === "teacher" ? (
-                              <>
-                                <Users className="inline w-4 h-4" />{" "}
-                                Teacher{" "}
-                              </>
-                            ) : (
-                              <>
-                                <Percent className="inline w-4 h-4" /> Student
-                              </>
-                            )}
-                          </div>
-                          {match.teacher_experience && (
-                            <div className="text-sm text-muted-foreground">
-                              Experience: {match.teacher_experience} years
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          onClick={() => connectMutation.mutate(match.user.id)}
-                        >
-                          Connect
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                  </ul>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -868,7 +820,18 @@ export default function Profile() {
                       </div>
                       
                       <div className="mt-3 flex gap-2">
-                        <Button size="sm" className="flex-1">
+                        <Button 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => {
+                            navigate(`/chat?with=${match.user.id}`);
+                            setShowSkillSwapResults(false);
+                            toast({
+                              title: "Opening Chat",
+                              description: `Starting conversation with ${match.user.username}`,
+                            });
+                          }}
+                        >
                           <Users className="w-4 h-4 mr-1" />
                           Connect
                         </Button>
