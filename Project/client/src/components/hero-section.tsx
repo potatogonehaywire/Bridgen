@@ -11,24 +11,24 @@ export default function HeroSection() {
       <KonamiCode />
       
       {/* Animated Pac-Man */}
-      <div className="absolute top-1/2 left-0 transform -translate-y-1/2 pacman-move z-10">
+      <div className="absolute top-[45%] left-0 transform -translate-y-1/2 pacman-move z-10">
         <AnimatedPacman size={80} />
       </div>
       
       {/* Dot Trail - positioned along pac man's path */}
-      <div className="absolute top-1/2 left-20 transform -translate-y-1/2 z-0">
+      <div className="absolute top-[45%] left-20 transform -translate-y-1/2 z-0">
         <div className="w-4 h-4 bg-pac-yellow rounded-full dot-trail glow-dot" style={{animationDelay: '3s'}}></div>
       </div>
-      <div className="absolute top-1/2 left-40 transform -translate-y-1/2 z-0">
+      <div className="absolute top-[45%] left-40 transform -translate-y-1/2 z-0">
         <div className="w-4 h-4 bg-ghost-orange rounded-full dot-trail glow-dot" style={{animationDelay: '4s'}}></div>
       </div>
-      <div className="absolute top-1/2 left-60 transform -translate-y-1/2 z-0">
+      <div className="absolute top-[45%] left-60 transform -translate-y-1/2 z-0">
         <div className="w-4 h-4 bg-cherry-red rounded-full dot-trail glow-dot" style={{animationDelay: '5s'}}></div>
       </div>
-      <div className="absolute top-1/2 left-80 transform -translate-y-1/2 z-0">
+      <div className="absolute top-[45%] left-80 transform -translate-y-1/2 z-0">
         <div className="w-4 h-4 bg-arcade-blue rounded-full dot-trail glow-dot" style={{animationDelay: '6s'}}></div>
       </div>
-      <div className="absolute top-1/2 left-96 transform -translate-y-1/2 z-0">
+      <div className="absolute top-[45%] left-96 transform -translate-y-1/2 z-0">
         <div className="w-5 h-5 bg-pac-yellow rounded-full dot-trail power-pellet" style={{animationDelay: '7s'}}></div>
       </div>
       
@@ -48,7 +48,7 @@ export default function HeroSection() {
           <Link href="/gamification">
             <Button className="arcade-button bg-primary text-primary-foreground px-12 py-6 rounded-full font-arcade text-lg hover:glow" data-testid="button-get-started">
               <Play className="w-5 h-5 mr-3" />
-              GET STARTED
+              LEADERBOARD
             </Button>
           </Link>
           <Link href="/chat">
